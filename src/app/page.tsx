@@ -17,7 +17,7 @@ export default function Home() {
             href="/register"
             className="bg-[#10B981] text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-700 transition"
           >
-            Start managing your business in minutes.
+            Get Started.
           </Link>
         </div>
       </div>

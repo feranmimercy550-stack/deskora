@@ -2,16 +2,52 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Registering:", fullName, email, businessName);
+    setLoading(true);
+    setError("");
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          id: data.user.id,
+          full_name: fullName,
+          business_name: businessName,
+          email: email,
+        });
+
+      if (profileError) {
+        setError(profileError.message);
+        setLoading(false);
+        return;
+      }
+
+      router.push("/dashboard");
+    }
   };
 
   return (
@@ -22,6 +58,13 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-bold text-[#2563EB]">Deskora</h1>
           <p className="text-gray-500 mt-1">Create your free account</p>
         </div>
+
+        {/* Error */}
+        {error && (
+          <div className="bg-red-50 text-red-500 text-sm px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleRegister} className="space-y-4">
@@ -83,9 +126,10 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            className="w-full bg-[#10B981] text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+            disabled={loading}
+            className="w-full bg-[#10B981] text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50"
           >
-            Create Account
+            {loading ? "Creating account..." : "Create Account"}
           </button>
         </form>
 
