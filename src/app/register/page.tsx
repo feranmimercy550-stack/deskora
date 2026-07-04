@@ -22,6 +22,15 @@ export default function RegisterPage() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo:
+          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+          `${window.location.origin}/auth/callback`,
+        data: {
+          full_name: fullName,
+          business_name: businessName,
+        },
+      },
     });
 
     if (error) {
@@ -30,23 +39,11 @@ export default function RegisterPage() {
       return;
     }
 
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          id: data.user.id,
-          full_name: fullName,
-          business_name: businessName,
-          email: email,
-        });
-
-      if (profileError) {
-        setError(profileError.message);
-        setLoading(false);
-        return;
-      }
-
+    // If email confirmation is required there is no active session yet.
+    if (data.session) {
       router.push("/dashboard");
+    } else {
+      router.push("/check-email");
     }
   };
 
