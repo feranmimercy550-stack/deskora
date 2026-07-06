@@ -72,7 +72,8 @@ export default function CustomersPage() {
     setError("");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const authResponse = await supabase.auth.getUser();
+      const user = authResponse.data.user;
 
       if (user) {
         const { error: dbError } = await supabase.from("customers").insert({
@@ -87,7 +88,6 @@ export default function CustomersPage() {
         if (dbError) throw dbError;
       }
 
-      // Add to local list
       const newCustomer: Customer = {
         id: customers.length + 1,
         name: form.name,
@@ -126,8 +126,8 @@ export default function CustomersPage() {
               key={link.href}
               href={link.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${link.active
-                  ? "bg-primary text-white"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
+                ? "bg-primary text-white"
+                : "text-sidebar-foreground hover:bg-sidebar-accent"
                 }`}
             >
               <link.icon className="w-4 h-4 shrink-0" />
@@ -217,8 +217,8 @@ export default function CustomersPage() {
                     <td className="px-6 py-4 text-sm font-medium text-foreground">{customer.totalSpent}</td>
                     <td className="px-6 py-4">
                       <span className={`text-xs px-2 py-1 rounded-full font-medium ${customer.status === "Active"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-600"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-600"
                         }`}>
                         {customer.status}
                       </span>
