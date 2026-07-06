@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 import {
   LayoutDashboard, Users, FileText, Receipt,
   CreditCard, Package, Calendar, BarChart3, Bot,
-  Settings, Search, Plus, Mail, Phone, MoreHorizontal, Quote
+  Settings, Search, Plus, Mail, Phone, MoreHorizontal, Quote, X
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -22,7 +23,17 @@ const sidebarLinks = [
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
-const customers = [
+type Customer = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  business: string;
+  totalSpent: string;
+  status: string;
+};
+
+const defaultCustomers: Customer[] = [
   { id: 1, name: "John Doe", email: "john@example.com", phone: "08123456789", business: "John's Store", totalSpent: "₦120,000", status: "Active" },
   { id: 2, name: "Jane Smith", email: "jane@bluestore.com", phone: "08087654321", business: "Blue Store", totalSpent: "₦75,000", status: "Active" },
   { id: 3, name: "BlueStar Ltd", email: "contact@bluestar.com", phone: "09012345678", business: "BlueStar Ltd", totalSpent: "₦350,000", status: "Active" },
@@ -33,6 +44,17 @@ const customers = [
 
 export default function CustomersPage() {
   const [search, setSearch] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    business: "",
+    notes: "",
+  });
 
   const filtered = customers.filter(
     (c) =>
@@ -40,6 +62,52 @@ export default function CustomersPage() {
       c.email.toLowerCase().includes(search.toLowerCase()) ||
       c.business.toLowerCase().includes(search.toLowerCase())
   );
+
+  const handleSave = async () => {
+    if (!form.name.trim()) {
+      setError("Customer name is required");
+      return;
+    }
+    setSaving(true);
+    setError("");
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        const { error: dbError } = await supabase.from("customers").insert({
+          user_id: user.id,
+          full_name: form.name,
+          email: form.email,
+          phone: form.phone,
+          business_name: form.business,
+          notes: form.notes,
+        });
+
+        if (dbError) throw dbError;
+      }
+
+      // Add to local list
+      const newCustomer: Customer = {
+        id: customers.length + 1,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        business: form.business || form.name,
+        totalSpent: "₦0",
+        status: "Active",
+      };
+
+      setCustomers((prev) => [newCustomer, ...prev]);
+      setForm({ name: "", email: "", phone: "", business: "", notes: "" });
+      setShowModal(false);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save customer";
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -57,11 +125,10 @@ export default function CustomersPage() {
             <Link
               key={link.href}
               href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                link.active
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${link.active
                   ? "bg-primary text-white"
                   : "text-sidebar-foreground hover:bg-sidebar-accent"
-              }`}
+                }`}
             >
               <link.icon className="w-4 h-4 shrink-0" />
               {link.label}
@@ -82,20 +149,21 @@ export default function CustomersPage() {
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-8 py-4 border-b border-border bg-card">
           <div>
             <h1 className="text-xl font-bold text-foreground">Customers</h1>
             <p className="text-muted-foreground text-sm">Manage all your customers in one place.</p>
           </div>
-          <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition"
+          >
             <Plus className="w-4 h-4" />
             Add Customer
           </button>
         </div>
 
         <div className="px-8 py-6">
-          {/* Search & Filter */}
           <div className="flex items-center gap-3 mb-6">
             <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 w-80">
               <Search className="w-4 h-4 text-muted-foreground" />
@@ -108,7 +176,6 @@ export default function CustomersPage() {
             </div>
           </div>
 
-          {/* Table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <table className="w-full">
               <thead>
@@ -147,15 +214,12 @@ export default function CustomersPage() {
                         {customer.phone}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">
-                      {customer.totalSpent}
-                    </td>
+                    <td className="px-6 py-4 text-sm font-medium text-foreground">{customer.totalSpent}</td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        customer.status === "Active"
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${customer.status === "Active"
                           ? "bg-green-100 text-green-700"
                           : "bg-gray-100 text-gray-600"
-                      }`}>
+                        }`}>
                         {customer.status}
                       </span>
                     </td>
@@ -169,12 +233,109 @@ export default function CustomersPage() {
               </tbody>
             </table>
           </div>
-
           <p className="text-xs text-muted-foreground mt-4">
             Showing {filtered.length} of {customers.length} customers
           </p>
         </div>
       </main>
+
+      {/* Add Customer Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-foreground">Add Customer</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-1 hover:bg-accent rounded transition"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            {error && (
+              <div className="bg-destructive/10 text-destructive text-sm px-4 py-3 rounded-lg mb-4">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Full Name <span className="text-destructive">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  placeholder="John Doe"
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Business Name</label>
+                <input
+                  type="text"
+                  value={form.business}
+                  onChange={(e) => setForm({ ...form, business: e.target.value })}
+                  placeholder="Business or company name"
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="john@example.com"
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="08012345678"
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Notes</label>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  placeholder="Any notes about this customer..."
+                  rows={3}
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 border border-border text-foreground py-2.5 rounded-lg text-sm font-medium hover:bg-accent transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 bg-primary text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Customer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
