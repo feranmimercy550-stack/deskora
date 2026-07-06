@@ -77,13 +77,13 @@ export default function CustomersPage() {
 
       if (user) {
         const { error: dbError } = await supabase.from("customers").insert({
-          user_id: user.id,
+          user_id: user.id as string,
           full_name: form.name,
-          email: form.email,
-          phone: form.phone,
-          business_name: form.business,
-          notes: form.notes,
-        });
+          email: form.email || null,
+          phone: form.phone || null,
+          business_name: form.business || null,
+          notes: form.notes || null,
+        } as never);
 
         if (dbError) throw dbError;
       }
