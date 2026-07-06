@@ -46,7 +46,7 @@ export default function RegisterPage() {
           email: email,
           currency: currency,
           country: country,
-        } as never);
+        });
 
       if (profileError) {
         setError(profileError.message);
