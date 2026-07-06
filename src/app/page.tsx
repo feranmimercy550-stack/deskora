@@ -54,7 +54,7 @@ export default function Home() {
           </Link>
           <button className="w-full sm:w-auto flex items-center justify-center gap-2 border border-white/20 text-white/80 px-7 py-3.5 rounded-xl font-semibold hover:bg-white/5 transition text-sm">
             <div className="w-5 h-5 bg-white/20 rounded-full flex items-center justify-center">
-              <div className="w-0 h-0 border-t-[4px] border-t-transparent border-l-[7px] border-l-white border-b-[4px] border-b-transparent ml-0.5"></div>
+              <div className="w-0 h-0 border-t-4px border-t-transparent border-l-[7px] border-l-white border-b-4px border-b-transparent ml-0.5"></div>
             </div>
             Watch Demo
           </button>
