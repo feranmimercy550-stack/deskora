@@ -84,10 +84,10 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
             {[
               { title: "Smart Invoicing", desc: "Create, send and track invoices in seconds. Get paid faster with automated reminders.", icon: "📄" },
-              { title: "AI Assistant", desc: "Write proposals, reply to clients, generate captions and summarize your business — just by asking.", icon: "🤖" },
+              { title: "AI Assistant", desc: "Write proposals, reply to clients, generate captions and summarize your business  just by asking.", icon: "🤖" },
               { title: "Customer Management", desc: "Keep every client's history, notes, and payment records in one clean place.", icon: "👥" },
               { title: "Payment Tracking", desc: "Log payments, track what's owed and get notified the moment a client pays.", icon: "💰" },
-              { title: "Business Reports", desc: "See your revenue, expenses, profit and top customers at a glance — no spreadsheets needed.", icon: "📊" },
+              { title: "Business Reports", desc: "See your revenue, expenses, profit and top customers at a glance  no spreadsheets needed.", icon: "📊" },
               { title: "Automation", desc: "Set rules that run your business while you sleep. Overdue invoice? Reminder sent automatically.", icon: "⚡" },
             ].map((feature) => (
               <div key={feature.title} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-primary/40 transition">
