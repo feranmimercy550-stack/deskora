@@ -42,7 +42,7 @@ export default function Home() {
         </h1>
 
         <p className="text-white/60 text-base md:text-lg mt-6 max-w-xl leading-relaxed">
-          Deskora helps freelancers and small businesses manage customers, invoices, payments, and growth — all in one place.
+          Deskora helps freelancers and small businesses manage customers, invoices, payments, and growth  all in one place.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center gap-4 mt-10">
