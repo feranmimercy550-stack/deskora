@@ -6,7 +6,7 @@ export default function Home() {
       {/* Navbar */}
       <nav className="flex items-center justify-between px-5 py-4 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
             <span className="text-white font-bold text-sm">D</span>
           </div>
           <span className="font-bold text-lg tracking-wide">DESKORA</span>
@@ -17,8 +17,8 @@ export default function Home() {
           <Link href="#about" className="hover:text-white transition">About</Link>
           <Link href="#contact" className="hover:text-white transition">Contact</Link>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm text-white/70 hover:text-white transition">
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href="/login" className="text-sm text-white/70 hover:text-white transition px-2">
             Login
           </Link>
           <Link href="/register" className="bg-primary text-white text-sm px-3 py-2 rounded-lg hover:opacity-90 transition font-medium whitespace-nowrap">
