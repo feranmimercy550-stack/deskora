@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  allowedDevOrigins: [
+    'vm-deskora-a.vusercontent.net',
+    '*.vusercontent.net',
+  ],
 };
 
 export default nextConfig;
