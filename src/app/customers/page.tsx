@@ -44,7 +44,7 @@ const defaultCustomers: Customer[] = [
 
 export default function CustomersPage() {
   const [search, setSearch] = useState("");
-  const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
