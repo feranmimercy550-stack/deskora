@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 import {
   LayoutDashboard, Users, FileText, Receipt,
   CreditCard, Package, Calendar, BarChart3, Bot,
-  Settings, Search, Plus, Quote
+  Settings, Search, Plus, Quote, X
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -22,33 +23,139 @@ const sidebarLinks = [
   { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
-const invoices = [
-  { id: "INV-2024-001", customer: "John Doe", amount: "₦50,000", status: "Paid", date: "May 12, 2024", due: "May 19, 2024" },
-  { id: "INV-2024-002", customer: "Jane Smith", amount: "₦35,000", status: "Pending", date: "May 11, 2024", due: "May 18, 2024" },
-  { id: "INV-2024-003", customer: "BlueStar Ltd", amount: "₦70,000", status: "Overdue", date: "May 10, 2024", due: "May 17, 2024" },
-  { id: "INV-2024-004", customer: "David Johnson", amount: "₦25,000", status: "Draft", date: "May 9, 2024", due: "May 16, 2024" },
-  { id: "INV-2024-005", customer: "Sarah Williams", amount: "₦40,000", status: "Paid", date: "May 8, 2024", due: "May 15, 2024" },
-  { id: "INV-2024-006", customer: "Michael Brown", amount: "₦60,000", status: "Paid", date: "May 7, 2024", due: "May 14, 2024" },
-];
-
 const statusStyles: Record<string, string> = {
-  Paid: "bg-green-100 text-green-700",
-  Pending: "bg-yellow-100 text-yellow-700",
-  Overdue: "bg-red-100 text-red-700",
-  Draft: "bg-gray-100 text-gray-600",
+  paid: "bg-green-100 text-green-700",
+  unpaid: "bg-yellow-100 text-yellow-700",
+  overdue: "bg-red-100 text-red-700",
+  draft: "bg-gray-100 text-gray-600",
+};
+
+type Invoice = {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  amount: number;
+  status: string;
+  due_date: string;
+  description: string;
+  created_at: string;
+};
+
+type Customer = {
+  id: string;
+  full_name: string;
+  business_name: string;
 };
 
 export default function InvoicesPage() {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("All");
+  const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    customer_id: "",
+    amount: "",
+    description: "",
+    due_date: "",
+    status: "unpaid",
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const authResponse = await supabase.auth.getUser();
+      const user = authResponse.data.user;
+      if (!user) { setLoading(false); return; }
+
+      const [invoicesRes, customersRes] = await Promise.all([
+        supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+        supabase.from("customers").select("id, full_name, business_name").eq("user_id", user.id),
+      ]);
+
+      if (invoicesRes.data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped = await Promise.all(invoicesRes.data.map(async (inv: any) => {
+          let customer_name = "Unknown";
+          if (inv.customer_id) {
+            const { data: cust } = await supabase.from("customers").select("full_name").eq("id", inv.customer_id).single();
+            if (cust) customer_name = cust.full_name;
+          }
+          return { ...inv, customer_name };
+        }));
+        setInvoices(mapped);
+      }
+
+      if (customersRes.data) setCustomers(customersRes.data);
+      setLoading(false);
+    };
+
+    fetchData();
+  }, []);
 
   const filtered = invoices.filter((inv) => {
     const matchesSearch =
-      inv.customer.toLowerCase().includes(search.toLowerCase()) ||
+      inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
       inv.id.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === "All" || inv.status === filter;
+    const matchesFilter = filter === "all" || inv.status === filter;
     return matchesSearch && matchesFilter;
   });
+
+  const handleSave = async () => {
+    if (!form.amount || !form.due_date) {
+      setError("Amount and due date are required");
+      return;
+    }
+    setSaving(true);
+    setError("");
+
+    try {
+      const authResponse = await supabase.auth.getUser();
+      const user = authResponse.data.user;
+      if (!user) throw new Error("Not logged in");
+
+      const { data, error: dbError } = await supabase
+        .from("invoices")
+        .insert({
+          user_id: user.id,
+          customer_id: form.customer_id || null,
+          amount: parseFloat(form.amount),
+          description: form.description || null,
+          due_date: form.due_date,
+          status: form.status,
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      if (data) {
+        const customer = customers.find(c => c.id === form.customer_id);
+        const newInvoice: Invoice = {
+          ...data,
+          customer_name: customer?.full_name || "Unknown",
+        };
+        setInvoices((prev) => [newInvoice, ...prev]);
+      }
+
+      setForm({ customer_id: "", amount: "", description: "", due_date: "", status: "unpaid" });
+      setShowModal(false);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save invoice";
+      setError(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const stats = {
+    total: invoices.length,
+    paid: invoices.filter(i => i.status === "paid").length,
+    unpaid: invoices.filter(i => i.status === "unpaid").length,
+    overdue: invoices.filter(i => i.status === "overdue").length,
+  };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -60,16 +167,11 @@ export default function InvoicesPage() {
           </div>
           <span className="text-sidebar-foreground font-bold text-lg">DESKORA</span>
         </div>
-
         <nav className="flex flex-col gap-1 flex-1">
           {sidebarLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
+            <Link key={link.href} href={link.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                link.active
-                  ? "bg-primary text-white"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
+                link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
               }`}
             >
               <link.icon className="w-4 h-4 shrink-0" />
@@ -77,11 +179,8 @@ export default function InvoicesPage() {
             </Link>
           ))}
         </nav>
-
         <div className="flex items-center gap-3 px-2 pt-4 border-t border-sidebar-border">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">
-            MA
-          </div>
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">MA</div>
           <div>
             <p className="text-sidebar-foreground text-sm font-medium">Mercy Akinwale</p>
             <p className="text-sidebar-foreground/60 text-xs">Mercy Digital</p>
@@ -91,15 +190,14 @@ export default function InvoicesPage() {
 
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-8 py-4 border-b border-border bg-card">
           <div>
             <h1 className="text-xl font-bold text-foreground">Invoices</h1>
             <p className="text-muted-foreground text-sm">Create, manage and track your invoices.</p>
           </div>
-          <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
-            <Plus className="w-4 h-4" />
-            Create Invoice
+          <button onClick={() => setShowModal(true)}
+            className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
+            <Plus className="w-4 h-4" /> Create Invoice
           </button>
         </div>
 
@@ -107,10 +205,10 @@ export default function InvoicesPage() {
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {[
-              { label: "Total Invoices", value: "6", color: "text-foreground" },
-              { label: "Paid", value: "3", color: "text-green-600" },
-              { label: "Pending", value: "1", color: "text-yellow-600" },
-              { label: "Overdue", value: "1", color: "text-red-600" },
+              { label: "Total Invoices", value: stats.total, color: "text-foreground" },
+              { label: "Paid", value: stats.paid, color: "text-green-600" },
+              { label: "Unpaid", value: stats.unpaid, color: "text-yellow-600" },
+              { label: "Overdue", value: stats.overdue, color: "text-red-600" },
             ].map((stat) => (
               <div key={stat.label} className="bg-card border border-border rounded-xl p-4">
                 <p className="text-muted-foreground text-sm">{stat.label}</p>
@@ -120,25 +218,19 @@ export default function InvoicesPage() {
           </div>
 
           {/* Search & Filter */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-6 flex-wrap">
             <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 w-80">
               <Search className="w-4 h-4 text-muted-foreground" />
-              <input
-                placeholder="Search invoices..."
-                value={search}
+              <input placeholder="Search invoices..." value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="bg-transparent text-sm outline-none w-full placeholder:text-muted-foreground text-foreground"
               />
             </div>
             <div className="flex gap-2">
-              {["All", "Paid", "Pending", "Overdue", "Draft"].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                    filter === f
-                      ? "bg-primary text-white"
-                      : "bg-card border border-border text-muted-foreground hover:bg-accent"
+              {["all", "paid", "unpaid", "overdue", "draft"].map((f) => (
+                <button key={f} onClick={() => setFilter(f)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize ${
+                    filter === f ? "bg-primary text-white" : "bg-card border border-border text-muted-foreground hover:bg-accent"
                   }`}
                 >
                   {f}
@@ -149,41 +241,135 @@ export default function InvoicesPage() {
 
           {/* Table */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Invoice</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Customer</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Amount</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Status</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Date</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Due Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((inv) => (
-                  <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition cursor-pointer">
-                    <td className="px-6 py-4 text-sm text-primary font-medium">{inv.id}</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{inv.customer}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">{inv.amount}</td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusStyles[inv.status]}`}>
-                        {inv.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{inv.date}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{inv.due}</td>
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <FileText className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <p className="text-muted-foreground font-medium">No invoices yet</p>
+                <p className="text-muted-foreground text-sm mt-1">Click "Create Invoice" to get started</p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    {["Invoice", "Customer", "Amount", "Status", "Due Date"].map((h) => (
+                      <th key={h} className="text-left text-xs font-medium text-muted-foreground px-6 py-3">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map((inv) => (
+                    <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition cursor-pointer">
+                      <td className="px-6 py-4 text-sm text-primary font-medium">
+                        INV-{inv.id.slice(0, 8).toUpperCase()}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-foreground">{inv.customer_name}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-foreground">
+                        ₦{inv.amount.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${statusStyles[inv.status] || "bg-gray-100 text-gray-600"}`}>
+                          {inv.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{inv.due_date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-
-          <p className="text-xs text-muted-foreground mt-4">
-            Showing {filtered.length} of {invoices.length} invoices
-          </p>
+          {!loading && (
+            <p className="text-xs text-muted-foreground mt-4">
+              Showing {filtered.length} of {invoices.length} invoices
+            </p>
+          )}
         </div>
       </main>
+
+      {/* Create Invoice Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-bold text-foreground">Create Invoice</h2>
+              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-accent rounded transition">
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            {error && (
+              <div className="bg-destructive/10 text-destructive text-sm px-4 py-3 rounded-lg mb-4">{error}</div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Customer</label>
+                <select value={form.customer_id} onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground">
+                  <option value="">Select a customer</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.full_name}{c.business_name ? ` — ${c.business_name}` : ""}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Amount (₦) <span className="text-destructive">*</span>
+                </label>
+                <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  placeholder="50000"
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="What is this invoice for?"
+                  rows={3}
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">
+                  Due Date <span className="text-destructive">*</span>
+                </label>
+                <input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Status</label>
+                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground">
+                  <option value="unpaid">Unpaid</option>
+                  <option value="paid">Paid</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowModal(false)}
+                className="flex-1 border border-border text-foreground py-2.5 rounded-lg text-sm font-medium hover:bg-accent transition">
+                Cancel
+              </button>
+              <button onClick={handleSave} disabled={saving}
+                className="flex-1 bg-primary text-white py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
+                {saving ? "Saving..." : "Create Invoice"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
