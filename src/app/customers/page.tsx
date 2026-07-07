@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import {
@@ -24,7 +24,7 @@ const sidebarLinks = [
 ];
 
 type Customer = {
-  id: number;
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -33,20 +33,12 @@ type Customer = {
   status: string;
 };
 
-const defaultCustomers: Customer[] = [
-  { id: 1, name: "John Doe", email: "john@example.com", phone: "08123456789", business: "John's Store", totalSpent: "₦120,000", status: "Active" },
-  { id: 2, name: "Jane Smith", email: "jane@bluestore.com", phone: "08087654321", business: "Blue Store", totalSpent: "₦75,000", status: "Active" },
-  { id: 3, name: "BlueStar Ltd", email: "contact@bluestar.com", phone: "09012345678", business: "BlueStar Ltd", totalSpent: "₦350,000", status: "Active" },
-  { id: 4, name: "David Johnson", email: "david@example.com", phone: "08111222333", business: "DJ Ventures", totalSpent: "₦45,000", status: "Inactive" },
-  { id: 5, name: "Sarah Williams", email: "sarah@example.com", phone: "08033445566", business: "Sarah's Fashion", totalSpent: "₦88,000", status: "Active" },
-  { id: 6, name: "Michael Brown", email: "michael@example.com", phone: "08166778899", business: "Brown & Co", totalSpent: "₦60,000", status: "Active" },
-];
-
 export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: "",
@@ -55,6 +47,40 @@ export default function CustomersPage() {
     business: "",
     notes: "",
   });
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      const authResponse = await supabase.auth.getUser();
+      const user = authResponse.data.user;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const mapped = data.map((c: any) => ({
+          id: c.id,
+          name: c.full_name,
+          email: c.email || "",
+          phone: c.phone || "",
+          business: c.business_name || c.full_name,
+          totalSpent: "₦0",
+          status: "Active",
+        }));
+        setCustomers(mapped);
+      }
+      setLoading(false);
+    };
+
+    fetchCustomers();
+  }, []);
 
   const filtered = customers.filter(
     (c) =>
@@ -75,30 +101,40 @@ export default function CustomersPage() {
       const authResponse = await supabase.auth.getUser();
       const user = authResponse.data.user;
 
-      if (user) {
-        const { error: dbError } = await supabase.from("customers").insert({
-          user_id: user.id as string,
+      if (!user) {
+        setError("You must be logged in to add customers");
+        setSaving(false);
+        return;
+      }
+
+      const { data, error: dbError } = await supabase
+        .from("customers")
+        .insert({
+          user_id: user.id,
           full_name: form.name,
           email: form.email || null,
           phone: form.phone || null,
           business_name: form.business || null,
           notes: form.notes || null,
-        } as never);
+        })
+        .select()
+        .single();
 
-        if (dbError) throw dbError;
+      if (dbError) throw dbError;
+
+      if (data) {
+        const newCustomer: Customer = {
+          id: data.id,
+          name: data.full_name,
+          email: data.email || "",
+          phone: data.phone || "",
+          business: data.business_name || data.full_name,
+          totalSpent: "₦0",
+          status: "Active",
+        };
+        setCustomers((prev) => [newCustomer, ...prev]);
       }
 
-      const newCustomer: Customer = {
-        id: customers.length + 1,
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        business: form.business || form.name,
-        totalSpent: "₦0",
-        status: "Active",
-      };
-
-      setCustomers((prev) => [newCustomer, ...prev]);
       setForm({ name: "", email: "", phone: "", business: "", notes: "" });
       setShowModal(false);
     } catch (err: unknown) {
@@ -126,8 +162,8 @@ export default function CustomersPage() {
               key={link.href}
               href={link.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${link.active
-                ? "bg-primary text-white"
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
+                  ? "bg-primary text-white"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent"
                 }`}
             >
               <link.icon className="w-4 h-4 shrink-0" />
@@ -177,65 +213,77 @@ export default function CustomersPage() {
           </div>
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Customer</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Email</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Phone</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Total Spent</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Status</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((customer) => (
-                  <tr key={customer.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary text-xs font-bold">
-                          {customer.name.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{customer.name}</p>
-                          <p className="text-xs text-muted-foreground">{customer.business}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Mail className="w-3.5 h-3.5" />
-                        {customer.email}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Phone className="w-3.5 h-3.5" />
-                        {customer.phone}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">{customer.totalSpent}</td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${customer.status === "Active"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-600"
-                        }`}>
-                        {customer.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button className="p-1 hover:bg-accent rounded transition">
-                        <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                      </button>
-                    </td>
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <Users className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <p className="text-muted-foreground font-medium">No customers yet</p>
+                <p className="text-muted-foreground text-sm mt-1">Click "Add Customer" to get started</p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Customer</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Email</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Phone</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Total Spent</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3">Status</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-6 py-3"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map((customer) => (
+                    <tr key={customer.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary text-xs font-bold">
+                            {customer.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{customer.name}</p>
+                            <p className="text-xs text-muted-foreground">{customer.business}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <Mail className="w-3.5 h-3.5" />
+                          {customer.email || "—"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <Phone className="w-3.5 h-3.5" />
+                          {customer.phone || "—"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-foreground">{customer.totalSpent}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-700">
+                          {customer.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button className="p-1 hover:bg-accent rounded transition">
+                          <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mt-4">
-            Showing {filtered.length} of {customers.length} customers
-          </p>
+
+          {!loading && (
+            <p className="text-xs text-muted-foreground mt-4">
+              Showing {filtered.length} of {customers.length} customers
+            </p>
+          )}
         </div>
       </main>
 
@@ -245,10 +293,7 @@ export default function CustomersPage() {
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-foreground">Add Customer</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-1 hover:bg-accent rounded transition"
-              >
+              <button onClick={() => setShowModal(false)} className="p-1 hover:bg-accent rounded transition">
                 <X className="w-5 h-5 text-muted-foreground" />
               </button>
             </div>
@@ -272,7 +317,6 @@ export default function CustomersPage() {
                   className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Business Name</label>
                 <input
@@ -283,7 +327,6 @@ export default function CustomersPage() {
                   className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
                 <input
@@ -294,7 +337,6 @@ export default function CustomersPage() {
                   className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Phone Number</label>
                 <input
@@ -305,7 +347,6 @@ export default function CustomersPage() {
                   className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground"
                 />
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Notes</label>
                 <textarea
