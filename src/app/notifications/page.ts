@@ -78,7 +78,6 @@ export default function NotificationsPage() {
     const authResponse = await supabase.auth.getUser();
     const user = authResponse.data.user;
     if (!user) return;
-
     await supabase.from("notifications").update({ read: true }).eq("user_id", user.id);
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
@@ -102,8 +101,7 @@ export default function NotificationsPage() {
         <nav className="flex flex-col gap-1 flex-1">
           {sidebarLinks.map((link) => (
             <Link key={link.href} href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
-                text-sidebar-foreground hover:bg-sidebar-accent`}>
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-sidebar-foreground hover:bg-sidebar-accent">
               <link.icon className="w-4 h-4 shrink-0" />
               {link.label}
             </Link>
