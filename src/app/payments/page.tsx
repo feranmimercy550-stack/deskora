@@ -115,8 +115,11 @@ export default function PaymentsPage() {
 
       if (dbError) throw dbError;
 
-      // Mark invoice as paid
-      await supabase.from("invoices").update({ status: "paid" }).eq("id", form.invoice_id);
+      // Only mark as paid if full amount is covered
+      const selectedInvoice = invoices.find(i => i.id === form.invoice_id);
+      if (selectedInvoice && parseFloat(form.amount) >= selectedInvoice.amount) {
+        await supabase.from("invoices").update({ status: "paid" }).eq("id", form.invoice_id);
+      }
 
       if (data) {
         const invoice = invoices.find(i => i.id === form.invoice_id);
@@ -152,9 +155,8 @@ export default function PaymentsPage() {
         <nav className="flex flex-col gap-1 flex-1">
           {sidebarLinks.map((link) => (
             <Link key={link.href} href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
-              }`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}
             >
               <link.icon className="w-4 h-4 shrink-0" />
               {link.label}
