@@ -146,9 +146,8 @@ export default function DashboardPage() {
         <nav className="flex flex-col gap-1 flex-1">
           {sidebarLinks.map((link) => (
             <Link key={link.href} href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
-              }`}>
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}>
               <link.icon className="w-4 h-4 shrink-0" />
               {link.label}
             </Link>
