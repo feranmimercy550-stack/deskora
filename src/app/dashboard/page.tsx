@@ -26,12 +26,10 @@ const sidebarLinks = [
 
 type Invoice = {
   id: string;
-  customer_id: string;
   customer_name: string;
   amount: number;
   status: string;
   due_date: string;
-  created_at: string;
 };
 
 type DashboardData = {
@@ -42,6 +40,14 @@ type DashboardData = {
   recentInvoices: Invoice[];
   userName: string;
   businessName: string;
+  unreadNotifications: number;
+};
+
+const statusStyles: Record<string, string> = {
+  paid: "bg-green-100 text-green-700",
+  unpaid: "bg-yellow-100 text-yellow-700",
+  overdue: "bg-red-100 text-red-700",
+  draft: "bg-gray-100 text-gray-600",
 };
 
 export default function DashboardPage() {
@@ -51,8 +57,9 @@ export default function DashboardPage() {
     totalCustomers: 0,
     profitThisMonth: 0,
     recentInvoices: [],
-    userName: "Mercy",
-    businessName: "Mercy Digital",
+    userName: "there",
+    businessName: "Your Business",
+    unreadNotifications: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -69,11 +76,12 @@ export default function DashboardPage() {
       const user = authResponse.data.user;
       if (!user) { setLoading(false); return; }
 
-      const [profileRes, invoicesRes, customersRes, paymentsRes] = await Promise.all([
+      const [profileRes, invoicesRes, customersRes, paymentsRes, notificationsRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", user.id).single(),
         supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("customers").select("id").eq("user_id", user.id),
         supabase.from("payments").select("*").eq("user_id", user.id),
+        supabase.from("notifications").select("id").eq("user_id", user.id).eq("read", false),
       ]);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,28 +90,21 @@ export default function DashboardPage() {
       const payments = paymentsRes.data || [] as any[];
       const profile = profileRes.data;
 
-      // Calculate stats
       const totalRevenue = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
-
       const outstandingAmount = invoices
         .filter((i: any) => i.status === "unpaid" || i.status === "overdue")
         .reduce((sum: number, i: any) => sum + i.amount, 0);
-
       const thisMonth = new Date().getMonth();
       const profitThisMonth = payments
         .filter((p: any) => new Date(p.paid_at).getMonth() === thisMonth)
         .reduce((sum: number, p: any) => sum + p.amount, 0);
 
-      // Get recent invoices with customer names
       const recentInvoices = await Promise.all(
         invoices.slice(0, 5).map(async (inv: any) => {
           let customer_name = "Unknown";
           if (inv.customer_id) {
             const { data: cust } = await supabase
-              .from("customers")
-              .select("full_name")
-              .eq("id", inv.customer_id)
-              .single();
+              .from("customers").select("full_name").eq("id", inv.customer_id).single();
             if (cust) customer_name = cust.full_name;
           }
           return { ...inv, customer_name };
@@ -118,6 +119,7 @@ export default function DashboardPage() {
         recentInvoices,
         userName: profile?.full_name?.split(" ")[0] || "there",
         businessName: profile?.business_name || "Your Business",
+        unreadNotifications: notificationsRes.data?.length || 0,
       });
 
       setLoading(false);
@@ -126,16 +128,8 @@ export default function DashboardPage() {
     fetchDashboard();
   }, []);
 
-  const statusStyles: Record<string, string> = {
-    paid: "bg-green-100 text-green-700",
-    unpaid: "bg-yellow-100 text-yellow-700",
-    overdue: "bg-red-100 text-red-700",
-    draft: "bg-gray-100 text-gray-600",
-  };
-
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Sidebar */}
       <aside className="w-64 bg-sidebar flex flex-col py-6 px-4 shrink-0">
         <div className="flex items-center gap-2 px-2 mb-8">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -155,7 +149,7 @@ export default function DashboardPage() {
         </nav>
         <div className="flex items-center gap-3 px-2 pt-4 border-t border-sidebar-border">
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">
-            {data.userName.charAt(0)}
+            {data.userName.charAt(0).toUpperCase()}
           </div>
           <div>
             <p className="text-sidebar-foreground text-sm font-medium">{data.userName}</p>
@@ -164,9 +158,7 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 overflow-y-auto">
-        {/* Top Bar */}
         <div className="flex items-center justify-between px-8 py-4 border-b border-border bg-card">
           <div className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 w-72 border border-border">
             <Search className="w-4 h-4 text-muted-foreground" />
@@ -174,22 +166,25 @@ export default function DashboardPage() {
               className="bg-transparent text-sm outline-none w-full text-foreground placeholder:text-muted-foreground" />
           </div>
           <div className="flex items-center gap-3">
-            <button className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
+            <Link href="/invoices"
+              className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
               <Plus className="w-4 h-4" /> Create New
-            </button>
-            <button className="relative p-2 rounded-lg hover:bg-accent transition">
+            </Link>
+            <Link href="/notifications" className="relative p-2 rounded-lg hover:bg-accent transition">
               <Bell className="w-5 h-5 text-foreground" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
-            </button>
+              {data.unreadNotifications > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full text-white text-[10px] flex items-center justify-center font-bold">
+                  {data.unreadNotifications}
+                </span>
+              )}
+            </Link>
             <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">
-              {data.userName.charAt(0)}
+              {data.userName.charAt(0).toUpperCase()}
             </div>
           </div>
         </div>
 
-        {/* Content */}
         <div className="px-8 py-6 space-y-6">
-          {/* Greeting */}
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               {getGreeting()}, {data.userName} 👋
@@ -205,37 +200,12 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              {/* Stat Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  {
-                    label: "Total Revenue",
-                    value: `₦${data.totalRevenue.toLocaleString()}`,
-                    change: "All time payments received",
-                    positive: true,
-                    icon: TrendingUp,
-                  },
-                  {
-                    label: "Outstanding Invoices",
-                    value: `₦${data.outstandingAmount.toLocaleString()}`,
-                    change: "Unpaid & overdue",
-                    positive: false,
-                    icon: AlertCircle,
-                  },
-                  {
-                    label: "Total Customers",
-                    value: data.totalCustomers,
-                    change: "Total clients added",
-                    positive: true,
-                    icon: Users,
-                  },
-                  {
-                    label: "Profit This Month",
-                    value: `₦${data.profitThisMonth.toLocaleString()}`,
-                    change: "Payments this month",
-                    positive: true,
-                    icon: TrendingUp,
-                  },
+                  { label: "Total Revenue", value: `₦${data.totalRevenue.toLocaleString()}`, change: "All time payments received", positive: true, icon: TrendingUp },
+                  { label: "Outstanding Invoices", value: `₦${data.outstandingAmount.toLocaleString()}`, change: "Unpaid & overdue", positive: false, icon: AlertCircle },
+                  { label: "Total Customers", value: data.totalCustomers, change: "Total clients added", positive: true, icon: Users },
+                  { label: "Profit This Month", value: `₦${data.profitThisMonth.toLocaleString()}`, change: "Payments this month", positive: true, icon: TrendingUp },
                 ].map((stat) => (
                   <div key={stat.label} className="bg-card border border-border rounded-xl p-5">
                     <div className="flex items-center justify-between mb-3">
@@ -250,9 +220,7 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* Middle Row */}
               <div className="grid grid-cols-3 gap-6">
-                {/* Recent Invoices */}
                 <div className="col-span-2 bg-card border border-border rounded-xl p-5">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="font-semibold text-foreground">Recent Invoices</h2>
@@ -298,9 +266,7 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                {/* Right Column */}
                 <div className="flex flex-col gap-4">
-                  {/* AI Suggestion */}
                   <div className="bg-card border border-border rounded-xl p-5">
                     <div className="flex items-center gap-2 mb-3">
                       <Bot className="w-5 h-5 text-primary" />
@@ -309,7 +275,7 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground mb-3">
                       {data.outstandingAmount > 0
                         ? `You have ₦${data.outstandingAmount.toLocaleString()} in outstanding invoices. Want me to send reminders?`
-                        : "Your business looks great! Want me to help you create a new invoice or proposal?"}
+                        : "Your business looks great! Want help creating a new invoice or proposal?"}
                     </p>
                     <div className="flex gap-2">
                       <Link href="/ai-assistant"
@@ -322,7 +288,6 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
                   <div className="bg-card border border-border rounded-xl p-5">
                     <h2 className="font-semibold text-foreground mb-3">Quick Actions</h2>
                     <div className="space-y-2">
