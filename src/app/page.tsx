@@ -38,7 +38,7 @@ export default function Home() {
           <span className="text-primary">Easier.</span>
         </h1>
         <p className="text-white/60 text-base md:text-lg mt-6 max-w-xl leading-relaxed">
-          Risely helps freelancers and small businesses manage customers, invoices, payments, and growth — all in one place.
+          Risely helps freelancers and small businesses manage customers, invoices, payments, and growth  all in one place.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-4 mt-10">
           <Link href="/register"
@@ -67,10 +67,10 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
             {[
               { title: "Smart Invoicing", desc: "Create, send and track invoices in seconds. Get paid faster with automated reminders.", icon: "📄" },
-              { title: "AI Assistant", desc: "Write proposals, reply to clients, generate captions and summarize your business — just by asking.", icon: "🤖" },
+              { title: "AI Assistant", desc: "Write proposals, reply to clients, generate captions and summarize your business  just by asking.", icon: "🤖" },
               { title: "Customer Management", desc: "Keep every client's history, notes, and payment records in one clean place.", icon: "👥" },
               { title: "Payment Tracking", desc: "Log payments, track what's owed and get notified the moment a client pays.", icon: "💰" },
-              { title: "Business Reports", desc: "See your revenue, expenses, profit and top customers at a glance — no spreadsheets needed.", icon: "📊" },
+              { title: "Business Reports", desc: "See your revenue, expenses, profit and top customers at a glance  no spreadsheets needed.", icon: "📊" },
               { title: "Automation", desc: "Set rules that run your business while you sleep. Overdue invoice? Reminder sent automatically.", icon: "⚡" },
             ].map((feature) => (
               <div key={feature.title} className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-primary/40 transition">
@@ -123,7 +123,7 @@ export default function Home() {
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-2xl md:text-3xl font-bold mb-4">Built for African businesses. Ready for the world.</h2>
           <p className="text-white/60 leading-relaxed">
-            Risely was built because we saw freelancers and small business owners spending hours on admin instead of growing their business. We built one platform that handles everything — so you can focus on what matters.
+            Risely was built because we saw freelancers and small business owners spending hours on admin instead of growing their business. We built one platform that handles everything  so you can focus on what matters.
           </p>
         </div>
       </section>
@@ -156,7 +156,7 @@ export default function Home() {
           <p className="text-white/60 mb-8">Join thousands of freelancers and businesses already using Risely.</p>
           <Link href="/register"
             className="inline-block bg-primary text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition text-sm">
-            Get Started Free — No Credit Card Required
+            Get Started Free  No Credit Card Required
           </Link>
         </div>
       </section>
