@@ -13,9 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Deskora — AI-Powered Business Operating System",
+  title: "Risely — Run Your Business Smarter",
   description:
-    "Deskora helps freelancers and small businesses manage customers, invoices, payments, and growth — all in one place.",
+    "Risely is the all-in-one platform that helps freelancers and small businesses manage customers, invoices, payments and growth from one simple dashboard.",
+  icons: {
+    icon: "/risely-icon.png",
+  },
 };
 
 export default function RootLayout({
