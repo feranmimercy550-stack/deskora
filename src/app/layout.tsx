@@ -13,9 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Deskora — AI-Powered Business Operating System",
-  description:
-    "Deskora helps freelancers and small businesses manage customers, invoices, payments, and growth — all in one place.",
+  title: "Risely — Run Your Business Smarter",
+  description: "Your AI Business Operating System. Manage customers, invoices, payments and grow your business from one intelligent platform.",
 };
 
 export default function RootLayout({
@@ -24,11 +23,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-background`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {children}
+      </body>
     </html>
   );
 }
