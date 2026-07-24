@@ -79,7 +79,8 @@ export default function QuotesPage() {
       if (quotesRes.data) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapped = quotesRes.data.map((q: any) => {
-          const customer = customersRes.data?.find((c: Customer) => c.id === q.customer_id);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const customer = (customersRes.data as any[])?.find((c: any) => c.id === q.customer_id);
           return { ...q, customer_name: customer?.full_name || "Unknown" };
         });
         setQuotes(mapped);
