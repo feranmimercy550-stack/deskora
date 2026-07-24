@@ -120,10 +120,11 @@ export default function QuotesPage() {
       if (dbError) throw dbError;
 
       if (data) {
+        const foundCustomer = customers.find(c => c.id === form.customer_id);
         setQuotes(prev => [{
           id: (data as any).id,
           customer_id: (data as any).customer_id || "",
-          customer_name: customer?.full_name || "Unknown",
+          customer_name: foundCustomer?.full_name || "Unknown",
           amount: (data as any).amount,
           status: (data as any).status,
           description: (data as any).description || "",
