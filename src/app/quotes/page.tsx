@@ -80,7 +80,7 @@ export default function QuotesPage() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapped = quotesRes.data.map((q: any) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const customer = (customersRes.data as any[])?.find((c: any) => c.id === q.customer_id);
+          const customer = (customersRes.data as any[])?.find((c: any) => c.id === q.customer_id);
           return { ...q, customer_name: customer?.full_name || "Unknown" };
         });
         setQuotes(mapped);
@@ -105,6 +105,7 @@ const customer = (customersRes.data as any[])?.find((c: any) => c.id === q.custo
 
       const { data, error: dbError } = await supabase
         .from("quotes")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .insert({
           user_id: user.id,
           customer_id: form.customer_id || null,
@@ -112,7 +113,7 @@ const customer = (customersRes.data as any[])?.find((c: any) => c.id === q.custo
           description: form.description || null,
           valid_until: form.valid_until,
           status: form.status,
-        })
+        } as any)
         .select()
         .single();
 
@@ -149,9 +150,8 @@ const customer = (customersRes.data as any[])?.find((c: any) => c.id === q.custo
         <nav className="flex flex-col gap-1 flex-1">
           {sidebarLinks.map((link) => (
             <Link key={link.href} href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
-              }`}>
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
+                }`}>
               <link.icon className="w-4 h-4 shrink-0" />
               {link.label}
             </Link>
