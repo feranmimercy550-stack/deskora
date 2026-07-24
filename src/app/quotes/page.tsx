@@ -120,8 +120,16 @@ export default function QuotesPage() {
       if (dbError) throw dbError;
 
       if (data) {
-        const customer = customers.find(c => c.id === form.customer_id);
-        setQuotes(prev => [{ ...data, customer_name: customer?.full_name || "Unknown" }, ...prev]);
+        setQuotes(prev => [{
+          id: (data as any).id,
+          customer_id: (data as any).customer_id || "",
+          customer_name: customer?.full_name || "Unknown",
+          amount: (data as any).amount,
+          status: (data as any).status,
+          description: (data as any).description || "",
+          valid_until: (data as any).valid_until,
+          created_at: (data as any).created_at,
+        }, ...prev]);
       }
 
       setForm({ customer_id: "", amount: "", description: "", valid_until: "", status: "pending" });
