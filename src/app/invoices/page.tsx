@@ -79,22 +79,26 @@ export default function InvoicesPage() {
         supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("customers").select("id, full_name, business_name, email").eq("user_id", user.id),
         supabase.from("profiles").select("business_name, email").eq("id", user.id).single(),
-      ]);
+      ]) as any[];
 
-      if (profileRes.data) {
-        setBusinessName((profileRes.data as any).business_name || "My Business");
-        setBusinessEmail((profileRes.data as any).email || "");
+      const profileData = (profileRes as any)?.data;
+      const customersData = (customersRes as any)?.data || [];
+      const invoicesData = (invoicesRes as any)?.data || [];
+
+      if (profileData) {
+        setBusinessName(profileData.business_name || "My Business");
+        setBusinessEmail(profileData.email || "");
       }
 
-      if (customersRes.data) setCustomers(customersRes.data);
+      if (customersData) setCustomers(customersData);
 
-      if (invoicesRes.data) {
+      if (invoicesData) {
         const mapped = await Promise.all(
-          invoicesRes.data.map(async (inv: any) => {
+          invoicesData.map(async (inv: any) => {
             let customer_name = "Unknown";
             let customer_email = "";
             if (inv.customer_id) {
-              const cust = customersRes.data?.find((c: any) => c.id === inv.customer_id);
+              const cust = customersData?.find((c: any) => c.id === inv.customer_id);
               if (cust) {
                 customer_name = (cust as any).full_name;
                 customer_email = (cust as any).email || "";
