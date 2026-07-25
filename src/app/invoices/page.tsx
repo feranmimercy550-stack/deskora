@@ -182,9 +182,19 @@ export default function InvoicesPage() {
     const amount = inv.amount;
     const description = inv.description || "Invoice Payment";
     const customerEmail = inv.customer_email || "";
-    const invoiceRef = `INV-${inv.id.slice(0, 8).toUpperCase()}`;
+    const invoiceRef = `INV-${inv.id.slice(0, 8).toUpperCase()}-${Date.now()}`;
+    const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || "";
 
-    const paymentUrl = `https://checkout.flutterwave.com/v3/hosted/pay?amount=${amount}&currency=NGN&customer[email]=${customerEmail}&tx_ref=${invoiceRef}&redirect_url=${window.location.origin}/dashboard&meta[invoice_id]=${inv.id}&narration=${encodeURIComponent(description)}`;
+    const paymentUrl = `https://checkout.flutterwave.com/v3/hosted/pay` +
+      `?public_key=${publicKey}` +
+      `&tx_ref=${invoiceRef}` +
+      `&amount=${amount}` +
+      `&currency=NGN` +
+      `&customer[email]=${encodeURIComponent(customerEmail)}` +
+      `&customer[name]=${encodeURIComponent(inv.customer_name)}` +
+      `&narration=${encodeURIComponent(description)}` +
+      `&redirect_url=${encodeURIComponent(window.location.origin + "/dashboard")}` +
+      `&meta[invoice_id]=${inv.id}`;
 
     window.open(paymentUrl, "_blank");
   };
