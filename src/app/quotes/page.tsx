@@ -1,27 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import {
-  LayoutDashboard, Users, FileText, Receipt,
-  CreditCard, Package, Calendar, BarChart3, Bot,
-  Settings, Plus, Quote, X, Search
-} from "lucide-react";
-
-const sidebarLinks = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Users, label: "Customers", href: "/customers" },
-  { icon: FileText, label: "Invoices", href: "/invoices" },
-  { icon: Quote, label: "Quotes", href: "/quotes", active: true },
-  { icon: Receipt, label: "Expenses", href: "/expenses" },
-  { icon: CreditCard, label: "Payments", href: "/payments" },
-  { icon: Package, label: "Products & Services", href: "/products" },
-  { icon: Calendar, label: "Calendar", href: "/calendar" },
-  { icon: BarChart3, label: "Reports", href: "/reports" },
-  { icon: Bot, label: "AI Assistant", href: "/ai-assistant" },
-  { icon: Settings, label: "Settings", href: "/settings" },
-];
+import AppLayout from "@/components/AppLayout";
+import { Plus, X, Search, Quote } from "lucide-react";
 
 type QuoteItem = {
   id: string;
@@ -56,90 +38,62 @@ export default function QuotesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    customer_id: "",
-    amount: "",
-    description: "",
-    valid_until: "",
-    status: "pending",
+    customer_id: "", amount: "", description: "", valid_until: "", status: "pending",
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      const authResponse = await supabase.auth.getUser();
-      const user = authResponse.data.user;
-      if (!user) { setLoading(false); return; }
+  useEffect(() => { fetchData(); }, []);
 
-      const [quotesRes, customersRes] = await Promise.all([
-        supabase.from("quotes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-        supabase.from("customers").select("id, full_name, business_name").eq("user_id", user.id),
-      ]);
+  const fetchData = async () => {
+    const authResponse = await supabase.auth.getUser();
+    const user = authResponse.data.user;
+    if (!user) { setLoading(false); return; }
 
-      if (customersRes.data) setCustomers(customersRes.data);
+    const [quotesRes, customersRes] = await Promise.all([
+      supabase.from("quotes").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("customers").select("id, full_name, business_name").eq("user_id", user.id),
+    ]) as any[];
 
-      if (quotesRes.data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const mapped = quotesRes.data.map((q: any) => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const customer = (customersRes.data as any[])?.find((c: any) => c.id === q.customer_id);
-          return { ...q, customer_name: customer?.full_name || "Unknown" };
-        });
-        setQuotes(mapped);
-      }
-      setLoading(false);
-    };
-    fetchData();
-  }, []);
+    const customersData = customersRes?.data || [];
+    setCustomers(customersData);
+
+    if (quotesRes?.data) {
+      const mapped = quotesRes.data.map((q: any) => {
+        const customer = customersData.find((c: any) => c.id === q.customer_id);
+        return { ...q, customer_name: customer?.full_name || "Unknown" };
+      });
+      setQuotes(mapped);
+    }
+    setLoading(false);
+  };
 
   const handleSave = async () => {
-    if (!form.amount || !form.valid_until) {
-      setError("Amount and valid until date are required");
-      return;
-    }
+    if (!form.amount || !form.valid_until) { setError("Amount and valid until date are required"); return; }
     setSaving(true);
     setError("");
-
     try {
       const authResponse = await supabase.auth.getUser();
       const user = authResponse.data.user;
       if (!user) throw new Error("Not logged in");
 
-      const { data, error: dbError } = await supabase
-        .from("quotes")
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .insert({
-          user_id: user.id,
-          customer_id: form.customer_id || null,
-          amount: parseFloat(form.amount),
-          description: form.description || null,
-          valid_until: form.valid_until,
-          status: form.status,
-        } as any)
-        .select()
-        .single();
+      const { data, error: dbError } = await supabase.from("quotes").insert({
+        user_id: user.id,
+        customer_id: form.customer_id || null,
+        amount: parseFloat(form.amount),
+        description: form.description || null,
+        valid_until: form.valid_until,
+        status: form.status,
+      } as any).select().single();
 
       if (dbError) throw dbError;
-
       if (data) {
-        const foundCustomer = customers.find(c => c.id === form.customer_id);
-        setQuotes(prev => [{
-          id: (data as any).id,
-          customer_id: (data as any).customer_id || "",
-          customer_name: foundCustomer?.full_name || "Unknown",
-          amount: (data as any).amount,
-          status: (data as any).status,
-          description: (data as any).description || "",
-          valid_until: (data as any).valid_until,
-          created_at: (data as any).created_at,
-        }, ...prev]);
+        const customer = customers.find(c => c.id === form.customer_id);
+        setQuotes(prev => [{ ...(data as any), customer_name: customer?.full_name || "Unknown" }, ...prev]);
       }
-
       setForm({ customer_id: "", amount: "", description: "", valid_until: "", status: "pending" });
       setShowModal(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save quote");
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   };
 
   const filtered = quotes.filter(q =>
@@ -148,112 +102,83 @@ export default function QuotesPage() {
   );
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <aside className="w-64 bg-sidebar flex flex-col py-6 px-4 shrink-0">
-        <div className="flex items-center gap-2 px-2 mb-8">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">R</span>
-          </div>
-          <span className="text-sidebar-foreground font-bold text-lg">RISELY</span>
-        </div>
-        <nav className="flex flex-col gap-1 flex-1">
-          {sidebarLinks.map((link) => (
-            <Link key={link.href} href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
-                }`}>
-              <link.icon className="w-4 h-4 shrink-0" />
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3 px-2 pt-4 border-t border-sidebar-border">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">R</div>
-          <div>
-            <p className="text-sidebar-foreground text-sm font-medium">Risely User</p>
-            <p className="text-sidebar-foreground/60 text-xs">My Business</p>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="flex items-center justify-between px-8 py-4 border-b border-border bg-card">
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Quotes</h1>
-            <p className="text-muted-foreground text-sm">Create and manage your quotations.</p>
-          </div>
-          <button onClick={() => setShowModal(true)}
-            className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
-            <Plus className="w-4 h-4" /> Create Quote
-          </button>
-        </div>
-
-        <div className="px-8 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            {[
-              { label: "Total Quotes", value: quotes.length, color: "text-foreground" },
-              { label: "Pending", value: quotes.filter(q => q.status === "pending").length, color: "text-yellow-600" },
-              { label: "Accepted", value: quotes.filter(q => q.status === "accepted").length, color: "text-green-600" },
-              { label: "Rejected", value: quotes.filter(q => q.status === "rejected").length, color: "text-red-600" },
-            ].map(stat => (
-              <div key={stat.label} className="bg-card border border-border rounded-xl p-4">
-                <p className="text-muted-foreground text-sm">{stat.label}</p>
-                <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 w-80">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <input placeholder="Search quotes..." value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="bg-transparent text-sm outline-none w-full placeholder:text-muted-foreground text-foreground" />
+    <AppLayout
+      title="Quotes"
+      subtitle="Create and manage your quotations."
+      action={
+        <button onClick={() => setShowModal(true)}
+          className="bg-primary text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
+          <Plus className="w-4 h-4" />
+          <span className="hidden md:inline">Create Quote</span>
+        </button>
+      }
+    >
+      <div className="px-4 md:px-8 py-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: "Total", value: quotes.length, color: "text-foreground" },
+            { label: "Pending", value: quotes.filter(q => q.status === "pending").length, color: "text-yellow-600" },
+            { label: "Accepted", value: quotes.filter(q => q.status === "accepted").length, color: "text-green-600" },
+            { label: "Rejected", value: quotes.filter(q => q.status === "rejected").length, color: "text-red-600" },
+          ].map(stat => (
+            <div key={stat.label} className="bg-card border border-border rounded-xl p-4">
+              <p className="text-muted-foreground text-sm">{stat.label}</p>
+              <p className={`text-2xl font-bold mt-1 ${stat.color}`}>{stat.value}</p>
             </div>
-          </div>
+          ))}
+        </div>
 
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <Quote className="w-12 h-12 text-muted-foreground/30 mb-4" />
-                <p className="text-muted-foreground font-medium">No quotes yet</p>
-                <p className="text-muted-foreground text-sm mt-1">Click "Create Quote" to get started</p>
-              </div>
-            ) : (
+        <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2 w-full md:w-80 mb-6">
+          <Search className="w-4 h-4 text-muted-foreground" />
+          <input placeholder="Search quotes..." value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-transparent text-sm outline-none w-full placeholder:text-muted-foreground text-foreground" />
+        </div>
+
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Quote className="w-12 h-12 text-muted-foreground/30 mb-4" />
+              <p className="text-muted-foreground font-medium">No quotes yet</p>
+              <p className="text-muted-foreground text-sm mt-1">Click "Create Quote" to get started</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
                     {["Quote ID", "Customer", "Amount", "Status", "Valid Until"].map(h => (
-                      <th key={h} className="text-left text-xs font-medium text-muted-foreground px-6 py-3">{h}</th>
+                      <th key={h} className="text-left text-xs font-medium text-muted-foreground px-4 md:px-6 py-3">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(q => (
                     <tr key={q.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition">
-                      <td className="px-6 py-4 text-sm text-primary font-medium">QT-{q.id.slice(0, 8).toUpperCase()}</td>
-                      <td className="px-6 py-4 text-sm text-foreground">{q.customer_name}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-foreground">₦{q.amount.toLocaleString()}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 md:px-6 py-4 text-sm text-primary font-medium">QT-{q.id.slice(0, 8).toUpperCase()}</td>
+                      <td className="px-4 md:px-6 py-4 text-sm text-foreground">{q.customer_name}</td>
+                      <td className="px-4 md:px-6 py-4 text-sm font-medium text-foreground">₦{q.amount.toLocaleString()}</td>
+                      <td className="px-4 md:px-6 py-4">
                         <span className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${statusStyles[q.status] || "bg-gray-100 text-gray-600"}`}>
                           {q.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{q.valid_until}</td>
+                      <td className="px-4 md:px-6 py-4 text-sm text-muted-foreground">{q.valid_until}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            )}
-          </div>
+            </div>
+          )}
         </div>
-      </main>
+      </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-foreground">Create Quote</h2>
@@ -268,16 +193,13 @@ export default function QuotesPage() {
                 <select value={form.customer_id} onChange={(e) => setForm({ ...form, customer_id: e.target.value })}
                   className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground">
                   <option value="">Select a customer</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.full_name}{c.business_name ? ` — ${c.business_name}` : ""}</option>
-                  ))}
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Amount (₦) *</label>
                 <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                  placeholder="50000"
-                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground" />
+                  placeholder="50000" className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">Description</label>
@@ -312,6 +234,6 @@ export default function QuotesPage() {
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   );
 }
