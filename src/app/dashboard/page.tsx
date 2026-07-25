@@ -3,26 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import AppLayout from "@/components/AppLayout";
 import {
-  LayoutDashboard, Users, FileText, Receipt,
-  CreditCard, Package, Calendar, BarChart3, Bot,
-  Settings, Bell, Search, TrendingUp, AlertCircle,
-  Plus, Quote
+  Users, FileText, CreditCard, BarChart3, Bot,
+  TrendingUp, AlertCircle, Plus
 } from "lucide-react";
-
-const sidebarLinks = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
-  { icon: Users, label: "Customers", href: "/customers" },
-  { icon: FileText, label: "Invoices", href: "/invoices" },
-  { icon: Quote, label: "Quotes", href: "/quotes" },
-  { icon: Receipt, label: "Expenses", href: "/expenses" },
-  { icon: CreditCard, label: "Payments", href: "/payments" },
-  { icon: Package, label: "Products & Services", href: "/products" },
-  { icon: Calendar, label: "Calendar", href: "/calendar" },
-  { icon: BarChart3, label: "Reports", href: "/reports" },
-  { icon: Bot, label: "AI Assistant", href: "/ai-assistant" },
-  { icon: Settings, label: "Settings", href: "/settings" },
-];
 
 type Invoice = {
   id: string;
@@ -32,20 +17,13 @@ type Invoice = {
   due_date: string;
 };
 
-type Profile = {
-  full_name: string;
-  business_name: string;
-  email: string;
-};
-
 export default function DashboardPage() {
-  const [profile, setProfile] = useState<Profile>({ full_name: "", business_name: "", email: "" });
+  const [firstName, setFirstName] = useState("there");
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [outstandingAmount, setOutstandingAmount] = useState(0);
   const [totalCustomers, setTotalCustomers] = useState(0);
   const [profitThisMonth, setProfitThisMonth] = useState(0);
   const [recentInvoices, setRecentInvoices] = useState<Invoice[]>([]);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const getGreeting = () => {
@@ -55,51 +33,35 @@ export default function DashboardPage() {
     return "Good evening";
   };
 
-  const firstName = profile.full_name?.split(" ")[0] || "there";
-
   useEffect(() => {
     const fetchDashboard = async () => {
       const authResponse = await supabase.auth.getUser();
       const user = authResponse.data.user;
       if (!user) { setLoading(false); return; }
 
-      const [profileRes, invoicesRes, customersRes, paymentsRes, notificationsRes] = await Promise.all([
-        supabase.from("profiles").select("*").eq("id", user.id).single(),
+      const [profileRes, invoicesRes, customersRes, paymentsRes] = await Promise.all([
+        supabase.from("profiles").select("full_name").eq("id", user.id).single(),
         supabase.from("invoices").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("customers").select("id").eq("user_id", user.id),
         supabase.from("payments").select("*").eq("user_id", user.id),
-        supabase.from("notifications").select("id").eq("user_id", user.id).eq("read", false),
       ]) as any[];
 
       const profileData = profileRes?.data;
       const invoices = invoicesRes?.data || [];
       const payments = paymentsRes?.data || [];
 
-      if (profileData) {
-        setProfile({
-          full_name: profileData.full_name || "",
-          business_name: profileData.business_name || "",
-          email: profileData.email || user.email || "",
-        });
+      if (profileData?.full_name) {
+        setFirstName(profileData.full_name.split(" ")[0]);
       }
 
-      const revenue = payments.reduce((sum: number, p: any) => sum + p.amount, 0);
-      setTotalRevenue(revenue);
-
-      const outstanding = invoices
+      setTotalRevenue(payments.reduce((sum: number, p: any) => sum + p.amount, 0));
+      setOutstandingAmount(invoices
         .filter((i: any) => i.status === "unpaid" || i.status === "overdue")
-        .reduce((sum: number, i: any) => sum + i.amount, 0);
-      setOutstandingAmount(outstanding);
-
+        .reduce((sum: number, i: any) => sum + i.amount, 0));
       setTotalCustomers(customersRes?.data?.length || 0);
-
-      const thisMonth = new Date().getMonth();
-      const monthProfit = payments
-        .filter((p: any) => new Date(p.paid_at).getMonth() === thisMonth)
-        .reduce((sum: number, p: any) => sum + p.amount, 0);
-      setProfitThisMonth(monthProfit);
-
-      setUnreadNotifications(notificationsRes?.data?.length || 0);
+      setProfitThisMonth(payments
+        .filter((p: any) => new Date(p.paid_at).getMonth() === new Date().getMonth())
+        .reduce((sum: number, p: any) => sum + p.amount, 0));
 
       const recent = await Promise.all(
         invoices.slice(0, 5).map(async (inv: any) => {
@@ -115,7 +77,6 @@ export default function DashboardPage() {
       setRecentInvoices(recent);
       setLoading(false);
     };
-
     fetchDashboard();
   }, []);
 
@@ -127,118 +88,72 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <aside className="w-64 bg-sidebar flex flex-col py-6 px-4 shrink-0">
-        <div className="flex items-center gap-2 px-2 mb-8">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">R</span>
-          </div>
-          <span className="text-sidebar-foreground font-bold text-lg">RISELY</span>
-        </div>
-        <nav className="flex flex-col gap-1 flex-1">
-          {sidebarLinks.map((link) => (
-            <Link key={link.href} href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
-                }`}>
-              <link.icon className="w-4 h-4 shrink-0" />
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3 px-2 pt-4 border-t border-sidebar-border">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">
-            {firstName.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <p className="text-sidebar-foreground text-sm font-medium">
-              {profile.full_name || "Risely User"}
-            </p>
-            <p className="text-sidebar-foreground/60 text-xs">
-              {profile.business_name || "My Business"}
-            </p>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="flex items-center justify-between px-8 py-4 border-b border-border bg-card">
-          <Link href="/search"
-            className="flex items-center gap-3 bg-background rounded-lg px-3 py-2 w-72 border border-border hover:border-primary/40 transition">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Search anything...</span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <Link href="/invoices"
-              className="bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
-              <Plus className="w-4 h-4" /> Create New
-            </Link>
-            <Link href="/notifications" className="relative p-2 rounded-lg hover:bg-accent transition">
-              <Bell className="w-5 h-5 text-foreground" />
-              {unreadNotifications > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-primary rounded-full text-white text-[10px] flex items-center justify-center font-bold">
-                  {unreadNotifications}
-                </span>
-              )}
-            </Link>
-            <Link href="/settings">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold cursor-pointer hover:opacity-90">
-                {firstName.charAt(0).toUpperCase()}
-              </div>
-            </Link>
-          </div>
+    <AppLayout
+      title="Dashboard"
+      subtitle="Here's what's happening with your business today."
+      action={
+        <Link href="/invoices"
+          className="bg-primary text-white px-3 md:px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:opacity-90 transition">
+          <Plus className="w-4 h-4" />
+          <span className="hidden md:inline">Create New</span>
+        </Link>
+      }
+    >
+      <div className="px-4 md:px-8 py-6 space-y-6">
+        {/* Greeting */}
+        <div>
+          <h2 className="text-xl md:text-2xl font-bold text-foreground">
+            {getGreeting()}, {firstName} 👋
+          </h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            Here's what's happening with your business today.
+          </p>
         </div>
 
-        <div className="px-8 py-6 space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              {getGreeting()}, {firstName} 👋
-            </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Here's what's happening with your business today.
-            </p>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
           </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        ) : (
+          <>
+            {/* Stat Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              {[
+                { label: "Total Revenue", value: `₦${totalRevenue.toLocaleString()}`, change: "All time", positive: true, icon: TrendingUp },
+                { label: "Outstanding", value: `₦${outstandingAmount.toLocaleString()}`, change: "Unpaid invoices", positive: false, icon: AlertCircle },
+                { label: "Customers", value: totalCustomers, change: "Total clients", positive: true, icon: Users },
+                { label: "This Month", value: `₦${profitThisMonth.toLocaleString()}`, change: "Revenue", positive: true, icon: TrendingUp },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-muted-foreground text-xs md:text-sm">{stat.label}</p>
+                    <stat.icon className={`w-4 h-4 ${stat.positive ? "text-green-500" : "text-red-500"}`} />
+                  </div>
+                  <p className="text-lg md:text-2xl font-bold text-foreground">{stat.value}</p>
+                  <p className={`text-xs mt-1 ${stat.positive ? "text-green-500" : "text-red-500"}`}>
+                    {stat.change}
+                  </p>
+                </div>
+              ))}
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { label: "Total Revenue", value: `₦${totalRevenue.toLocaleString()}`, change: "All time payments received", positive: true, icon: TrendingUp },
-                  { label: "Outstanding", value: `₦${outstandingAmount.toLocaleString()}`, change: "Unpaid & overdue invoices", positive: false, icon: AlertCircle },
-                  { label: "Customers", value: totalCustomers, change: "Total clients added", positive: true, icon: Users },
-                  { label: "This Month", value: `₦${profitThisMonth.toLocaleString()}`, change: "Revenue this month", positive: true, icon: TrendingUp },
-                ].map((stat) => (
-                  <div key={stat.label} className="bg-card border border-border rounded-xl p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-muted-foreground text-sm">{stat.label}</p>
-                      <stat.icon className={`w-4 h-4 ${stat.positive ? "text-green-500" : "text-red-500"}`} />
-                    </div>
-                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                    <p className={`text-xs mt-2 ${stat.positive ? "text-green-500" : "text-red-500"}`}>
-                      {stat.change}
-                    </p>
-                  </div>
-                ))}
-              </div>
 
-              <div className="grid grid-cols-3 gap-6">
-                <div className="col-span-2 bg-card border border-border rounded-xl p-5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-semibold text-foreground">Recent Invoices</h2>
-                    <Link href="/invoices" className="text-primary text-sm hover:underline">View all</Link>
+            {/* Recent Invoices + Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2 bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-semibold text-foreground">Recent Invoices</h2>
+                  <Link href="/invoices" className="text-primary text-sm hover:underline">View all</Link>
+                </div>
+                {recentInvoices.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <FileText className="w-10 h-10 text-muted-foreground/30 mb-3" />
+                    <p className="text-muted-foreground text-sm">No invoices yet</p>
+                    <Link href="/invoices" className="text-primary text-sm mt-1 hover:underline">
+                      Create your first invoice
+                    </Link>
                   </div>
-                  {recentInvoices.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
-                      <FileText className="w-10 h-10 text-muted-foreground/30 mb-3" />
-                      <p className="text-muted-foreground text-sm">No invoices yet</p>
-                      <Link href="/invoices" className="text-primary text-sm mt-1 hover:underline">
-                        Create your first invoice
-                      </Link>
-                    </div>
-                  ) : (
+                ) : (
+                  <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
                         <tr className="text-left text-xs text-muted-foreground border-b border-border">
@@ -246,7 +161,6 @@ export default function DashboardPage() {
                           <th className="pb-2">Customer</th>
                           <th className="pb-2">Amount</th>
                           <th className="pb-2">Status</th>
-                          <th className="pb-2">Due Date</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -262,59 +176,60 @@ export default function DashboardPage() {
                                 {inv.status}
                               </span>
                             </td>
-                            <td className="py-3 text-sm text-muted-foreground">{inv.due_date}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-4">
+                {/* AI Suggestion */}
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Bot className="w-5 h-5 text-primary" />
+                    <h2 className="font-semibold text-foreground">AI Suggestion</h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {outstandingAmount > 0
+                      ? `You have ₦${outstandingAmount.toLocaleString()} outstanding. Want me to send reminders?`
+                      : "Want help creating a new invoice or proposal?"}
+                  </p>
+                  <div className="flex gap-2">
+                    <Link href="/ai-assistant"
+                      className="bg-primary text-white text-xs px-3 py-1.5 rounded-lg hover:opacity-90 transition">
+                      Ask AI
+                    </Link>
+                    <button className="border border-border text-xs px-3 py-1.5 rounded-lg hover:bg-accent transition text-foreground">
+                      Not now
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-4">
-                  <div className="bg-card border border-border rounded-xl p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Bot className="w-5 h-5 text-primary" />
-                      <h2 className="font-semibold text-foreground">AI Suggestion</h2>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {outstandingAmount > 0
-                        ? `You have ₦${outstandingAmount.toLocaleString()} in outstanding invoices. Want me to send reminders?`
-                        : "Your business looks great! Want help creating a new invoice or proposal?"}
-                    </p>
-                    <div className="flex gap-2">
-                      <Link href="/ai-assistant"
-                        className="bg-primary text-white text-xs px-3 py-1.5 rounded-lg hover:opacity-90 transition">
-                        Ask AI
+                {/* Quick Actions */}
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <h2 className="font-semibold text-foreground mb-3">Quick Actions</h2>
+                  <div className="space-y-2">
+                    {[
+                      { label: "Add Customer", href: "/customers", icon: Users },
+                      { label: "Create Invoice", href: "/invoices", icon: FileText },
+                      { label: "Record Payment", href: "/payments", icon: CreditCard },
+                      { label: "View Reports", href: "/reports", icon: BarChart3 },
+                    ].map((action) => (
+                      <Link key={action.label} href={action.href}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition text-sm text-foreground">
+                        <action.icon className="w-4 h-4 text-primary" />
+                        {action.label}
                       </Link>
-                      <button className="border border-border text-xs px-3 py-1.5 rounded-lg hover:bg-accent transition text-foreground">
-                        Not now
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="bg-card border border-border rounded-xl p-5">
-                    <h2 className="font-semibold text-foreground mb-3">Quick Actions</h2>
-                    <div className="space-y-2">
-                      {[
-                        { label: "Add Customer", href: "/customers", icon: Users },
-                        { label: "Create Invoice", href: "/invoices", icon: FileText },
-                        { label: "Record Payment", href: "/payments", icon: CreditCard },
-                        { label: "View Reports", href: "/reports", icon: BarChart3 },
-                      ].map((action) => (
-                        <Link key={action.label} href={action.href}
-                          className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-accent transition text-sm text-foreground">
-                          <action.icon className="w-4 h-4 text-primary" />
-                          {action.label}
-                        </Link>
-                      ))}
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+            </div>
+          </>
+        )}
+      </div>
+    </AppLayout>
   );
 }
