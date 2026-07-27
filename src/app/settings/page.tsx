@@ -1,34 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import AppLayout from "@/components/AppLayout";
 import { currencies } from "@/lib/currency";
-import {
-  LayoutDashboard, Users, FileText, Receipt,
-  CreditCard, Package, Calendar, BarChart3, Bot,
-  Settings, Quote
-} from "lucide-react";
-
-const sidebarLinks = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Users, label: "Customers", href: "/customers" },
-  { icon: FileText, label: "Invoices", href: "/invoices" },
-  { icon: Quote, label: "Quotes", href: "/quotes" },
-  { icon: Receipt, label: "Expenses", href: "/expenses" },
-  { icon: CreditCard, label: "Payments", href: "/payments" },
-  { icon: Package, label: "Products & Services", href: "/products" },
-  { icon: Calendar, label: "Calendar", href: "/calendar" },
-  { icon: BarChart3, label: "Reports", href: "/reports" },
-  { icon: Bot, label: "AI Assistant", href: "/ai-assistant" },
-  { icon: Settings, label: "Settings", href: "/settings", active: true },
-];
 
 export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
   const [form, setForm] = useState({
     full_name: "", business_name: "", email: "", currency: "NGN", country: "Nigeria",
+  });
+  const [passwordForm, setPasswordForm] = useState({
+    newPassword: "", confirmPassword: "",
   });
 
   useEffect(() => {
@@ -58,8 +45,10 @@ export default function SettingsPage() {
       const user = authResponse.data.user;
       if (!user) throw new Error("Not logged in");
       const { error } = await supabase.from("profiles").update({
-        full_name: form.full_name, business_name: form.business_name,
-        currency: form.currency, country: form.country,
+        full_name: form.full_name,
+        business_name: form.business_name,
+        currency: form.currency,
+        country: form.country,
       } as any).eq("id", user.id);
       if (error) throw error;
       setSuccess(true);
@@ -68,102 +57,137 @@ export default function SettingsPage() {
     finally { setSaving(false); }
   };
 
+  const handlePasswordChange = async () => {
+    setPasswordError("");
+    if (!passwordForm.newPassword || passwordForm.newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("Passwords do not match");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: passwordForm.newPassword });
+      if (error) throw error;
+      setPasswordSuccess(true);
+      setPasswordForm({ newPassword: "", confirmPassword: "" });
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (err: unknown) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password");
+    } finally { setChangingPassword(false); }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      <aside className="w-64 bg-sidebar flex flex-col py-6 px-4 shrink-0">
-        <div className="flex items-center gap-2 px-2 mb-8">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">R</span>
-          </div>
-          <span className="text-sidebar-foreground font-bold text-lg">RISELY</span>
-        </div>
-        <nav className="flex flex-col gap-1 flex-1">
-          {sidebarLinks.map((link) => (
-            <Link key={link.href} href={link.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                link.active ? "bg-primary text-white" : "text-sidebar-foreground hover:bg-sidebar-accent"
-              }`}>
-              <link.icon className="w-4 h-4 shrink-0" />
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-3 px-2 pt-4 border-t border-sidebar-border">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-xs font-bold">R</div>
-          <div>
-            <p className="text-sidebar-foreground text-sm font-medium">Risely User</p>
-            <p className="text-sidebar-foreground/60 text-xs">My Business</p>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="px-8 py-4 border-b border-border bg-card">
-          <h1 className="text-xl font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground text-sm">Manage your account and preferences.</p>
-        </div>
-
-        <div className="px-8 py-6 max-w-2xl">
+    <AppLayout
+      title="Settings"
+      subtitle="Manage your account and preferences."
+    >
+      <div className="px-4 md:px-8 py-6 max-w-2xl space-y-6">
+        {/* Business Info */}
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="font-semibold text-foreground text-lg mb-4">Business Information</h2>
           {success && (
-            <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg mb-6">
+            <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg mb-4">
               Settings saved successfully!
             </div>
           )}
-
-          <div className="bg-card border border-border rounded-xl p-6 space-y-6">
-            <h2 className="font-semibold text-foreground text-lg">Business Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
-                <input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Business Name</label>
-                <input type="text" value={form.business_name} onChange={(e) => setForm({ ...form, business_name: e.target.value })}
-                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
-                <input type="email" value={form.email} disabled
-                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm bg-muted text-muted-foreground cursor-not-allowed" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Currency</label>
-                <select value={form.currency} onChange={(e) => {
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Full Name</label>
+              <input type="text" value={form.full_name}
+                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Business Name</label>
+              <input type="text" value={form.business_name}
+                onChange={(e) => setForm({ ...form, business_name: e.target.value })}
+                className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
+              <input type="email" value={form.email} disabled
+                className="w-full border border-input rounded-lg px-4 py-2.5 text-sm bg-muted text-muted-foreground cursor-not-allowed" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Currency</label>
+              <select value={form.currency}
+                onChange={(e) => {
                   const selected = currencies.find(c => c.code === e.target.value);
                   setForm({ ...form, currency: e.target.value, country: selected?.country || form.country });
                 }}
-                  className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground">
-                  {currencies.map(c => (
-                    <option key={c.code} value={c.code}>{c.symbol} — {c.name} ({c.country})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="pt-4 border-t border-border">
-              <button onClick={handleSave} disabled={saving}
-                className="bg-primary text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
-                {saving ? "Saving..." : "Save Changes"}
-              </button>
+                className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground">
+                {currencies.map(c => (
+                  <option key={c.code} value={c.code}>{c.symbol} — {c.name} ({c.country})</option>
+                ))}
+              </select>
             </div>
           </div>
-
-          <div className="bg-card border border-border rounded-xl p-6 mt-6">
-            <h2 className="font-semibold text-foreground text-lg mb-4">Account</h2>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">Sign out</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Sign out of your Risely account</p>
-              </div>
-              <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/login"; }}
-                className="border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition">
-                Sign Out
-              </button>
-            </div>
+          <div className="pt-4 border-t border-border mt-4">
+            <button onClick={handleSave} disabled={saving}
+              className="bg-primary text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
           </div>
         </div>
-      </main>
-    </div>
+
+        {/* Change Password */}
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="font-semibold text-foreground text-lg mb-4">Change Password</h2>
+          {passwordError && (
+            <div className="bg-destructive/10 text-destructive text-sm px-4 py-3 rounded-lg mb-4">{passwordError}</div>
+          )}
+          {passwordSuccess && (
+            <div className="bg-green-50 text-green-700 text-sm px-4 py-3 rounded-lg mb-4">
+              Password changed successfully!
+            </div>
+          )}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">New Password</label>
+              <input type="password" value={passwordForm.newPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                placeholder="••••••••"
+                className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Confirm New Password</label>
+              <input type="password" value={passwordForm.confirmPassword}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                placeholder="••••••••"
+                className="w-full border border-input rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background text-foreground" />
+            </div>
+          </div>
+          <div className="pt-4 border-t border-border mt-4">
+            <button onClick={handlePasswordChange} disabled={changingPassword}
+              className="bg-primary text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
+              {changingPassword ? "Changing..." : "Change Password"}
+            </button>
+          </div>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="bg-card border border-border rounded-xl p-6">
+          <h2 className="font-semibold text-foreground text-lg mb-4">Account</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">Sign out</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Sign out of your Risely account</p>
+            </div>
+            <button onClick={handleSignOut}
+              className="border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition">
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
   );
 }
