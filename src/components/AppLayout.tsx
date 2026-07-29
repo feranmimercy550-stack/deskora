@@ -126,9 +126,7 @@ export default function AppLayout({ children, title, subtitle, action }: Props) 
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-5 border-b border-sidebar-border">
         <Link href="/dashboard" onClick={() => setSidebarOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">R</span>
-          </div>
+          <img src="/favicon.png" alt="Risely" className="w-8 h-8 rounded-lg" />
           <span className="text-sidebar-foreground font-bold text-lg">RISELY</span>
         </Link>
         <button onClick={() => setSidebarOpen(false)} className="md:hidden text-sidebar-foreground/60 hover:text-sidebar-foreground p-1">
@@ -238,9 +236,7 @@ export default function AppLayout({ children, title, subtitle, action }: Props) 
               <Menu className="w-5 h-5 text-foreground" />
             </button>
             <Link href="/dashboard" className="md:hidden shrink-0">
-              <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xs">R</span>
-              </div>
+              <img src="/favicon.png" alt="Risely" className="w-7 h-7 rounded-lg" />
             </Link>
             <div className="min-w-0 flex-1">
               <h1 className="text-base md:text-xl font-bold text-foreground truncate">{title}</h1>

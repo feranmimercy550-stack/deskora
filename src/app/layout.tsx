@@ -17,6 +17,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Risely — Run Your Business Smarter",
   description: "Your AI Business Operating System. Manage customers, invoices, payments and grow your business from one intelligent platform.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
