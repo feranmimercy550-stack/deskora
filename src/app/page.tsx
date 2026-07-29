@@ -9,6 +9,7 @@ import { ChevronRight, ArrowRight, Menu, X } from "lucide-react";
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [demoOpen, setDemoOpen] = useState(false);
   const { scrollY } = useScroll();
   const opacity = useTransform(scrollY, [0, 300], [1, 0]);
   const scale = useTransform(scrollY, [0, 300], [1, 0.8]);
@@ -71,10 +72,8 @@ export default function Home() {
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-white/10">
         <div className="px-4 md:px-8 py-4 flex items-center justify-between">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/50">
-              <span className="text-white font-bold text-sm">R</span>
-            </div>
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2">
+            <img src="/favicon.png" alt="Risely" className="w-8 h-8" />
             <span className="font-bold text-lg tracking-tight">Risely</span>
           </motion.div>
 
@@ -179,6 +178,7 @@ export default function Home() {
               </Link>
             </motion.div>
             <motion.button
+              onClick={() => setDemoOpen(true)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="w-full sm:w-auto flex items-center justify-center gap-2 border border-white/20 text-white/80 px-8 py-4 rounded-xl font-semibold hover:bg-white/5 hover:border-white/40 transition"
@@ -396,9 +396,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-white/5">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">R</span>
-              </div>
+              <img src="/favicon.png" alt="Risely" className="w-8 h-8" />
               <span className="font-bold text-white">Risely</span>
             </div>
             <div className="flex items-center gap-8 text-sm text-white/50">
@@ -414,6 +412,63 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Demo Modal */}
+      <AnimatePresence>
+        {demoOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setDemoOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 rounded-2xl border border-white/10 overflow-hidden max-w-2xl w-full"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-white/10">
+                <h2 className="text-xl font-bold text-white">Risely Demo</h2>
+                <button
+                  onClick={() => setDemoOpen(false)}
+                  className="text-white/60 hover:text-white transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="aspect-video bg-black flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <div className="w-0 h-0 border-l-8 border-l-transparent border-r-0 border-t-6 border-t-transparent border-b-6 border-b-transparent ml-1" style={{
+                      borderLeft: '8px solid transparent',
+                      borderRight: '0px solid',
+                      borderTop: '6px solid transparent',
+                      borderBottom: '6px solid transparent',
+                      marginLeft: '4px'
+                    }}>
+                      <div className="w-0 h-0" style={{
+                        borderLeft: '10px solid white',
+                        borderTop: '6px solid transparent',
+                        borderBottom: '6px solid transparent',
+                      }}></div>
+                    </div>
+                  </div>
+                  <p className="text-white/60 mb-4">Demo video coming soon</p>
+                  <Link
+                    href="/register"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition text-sm"
+                  >
+                    Get Started Now
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

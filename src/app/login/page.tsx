@@ -16,12 +16,18 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError(error.message || "Login failed. Please check your credentials.");
+        setLoading(false);
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err: any) {
+      setError(err?.message || "An unexpected error occurred");
       setLoading(false);
-    } else {
-      router.push("/dashboard");
     }
   };
 
@@ -29,11 +35,8 @@ export default function LoginPage() {
     <main className="min-h-screen bg-background flex items-center justify-center py-10 px-4">
       <div className="bg-card p-8 rounded-2xl shadow-md w-full max-w-md border border-border">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">R</span>
-            </div>
-            <span className="font-bold text-xl text-foreground">RISELY</span>
+          <div className="flex items-center justify-center mb-4">
+            <img src="/logo-dark.png" alt="Risely" className="h-16" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
           <p className="text-muted-foreground mt-1 text-sm">Sign in to your account</p>
