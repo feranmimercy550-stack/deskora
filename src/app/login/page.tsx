@@ -36,7 +36,7 @@ export default function LoginPage() {
       <div className="bg-card p-8 rounded-2xl shadow-md w-full max-w-md border border-border">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <img src="/logo-dark.png" alt="Risely" className="h-16" />
+            <img src="/logo.png" alt="Risely" className="h-16" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
           <p className="text-muted-foreground mt-1 text-sm">Sign in to your account</p>
