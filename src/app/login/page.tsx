@@ -35,9 +35,9 @@ export default function LoginPage() {
     <main className="min-h-screen bg-background flex items-center justify-center py-10 px-4">
       <div className="bg-card p-8 rounded-2xl shadow-md w-full max-w-md border border-border">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
+          <Link href="/" className="flex items-center justify-center mb-4 cursor-pointer hover:opacity-80 transition">
             <img src="/logo.png" alt="Risely" className="h-16" />
-          </div>
+          </Link>
           <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
           <p className="text-muted-foreground mt-1 text-sm">Sign in to your account</p>
         </div>

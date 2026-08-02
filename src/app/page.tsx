@@ -72,9 +72,9 @@ export default function Home() {
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-white/10">
         <div className="px-4 md:px-8 py-4 flex items-center justify-between">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             <img src="/favicon.png" alt="Risely" className="w-8 h-8" />
-            <span className="font-bold text-lg tracking-tight">Risely</span>
+            <span className="font-bold text-lg tracking-tight hover:text-purple-400 transition">Risely</span>
           </motion.div>
 
           {/* Desktop Menu */}
@@ -152,20 +152,29 @@ export default function Home() {
           </motion.div>
 
           {/* Main Headline */}
-          <motion.h1 variants={itemVariants} className="text-5xl md:text-8xl font-bold leading-tight mb-6">
-            Run Your Business.{" "}
-            <span className="bg-gradient-to-r from-purple-400 via-purple-500 to-blue-400 bg-clip-text text-transparent animate-pulse">
-              Smarter. Faster. Easier.
-            </span>
+          <motion.h1 variants={itemVariants} className="text-5xl md:text-7xl font-bold leading-tight mb-6 text-balance">
+            Your AI Business Operating System
           </motion.h1>
 
           {/* Subtitle */}
           <motion.p
             variants={itemVariants}
-            className="text-lg md:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed"
+            className="text-lg md:text-xl text-white/60 mb-12 max-w-2xl mx-auto leading-relaxed"
           >
-            Risely helps freelancers and small businesses manage customers, invoices, payments, and growth all in one intelligent platform.
+            Manage customers, invoices, payments, and grow your business with AI-powered insights. Get skills from online servers to automate everything.
           </motion.p>
+
+          {/* Hero Image */}
+          <motion.div
+            variants={itemVariants}
+            className="mb-12 rounded-2xl overflow-hidden border border-white/10 shadow-2xl"
+          >
+            <img 
+              src="/risely-hero.png" 
+              alt="Risely Dashboard" 
+              className="w-full max-w-3xl h-auto"
+            />
+          </motion.div>
 
           {/* CTA Buttons */}
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">

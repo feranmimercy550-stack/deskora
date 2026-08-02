@@ -160,7 +160,7 @@ export default function AppLayout({ children, title, subtitle, action }: Props) 
 
         {/* Profile dropdown — opens UPWARD */}
         {showProfileMenu && (
-          <div className="absolute bottom-20 left-3 right-3 bg-card border border-border rounded-xl shadow-2xl z-[100] overflow-hidden">
+          <div className="absolute bottom-24 left-3 right-3 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden">
             {/* Profile header */}
             <div className="p-4 bg-primary/5 border-b border-border">
               <div className="flex items-center gap-3">
