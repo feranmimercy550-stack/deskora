@@ -8,21 +8,31 @@ import {
   LayoutDashboard, Users, FileText, Receipt,
   CreditCard, Package, Calendar, BarChart3, Bot,
   Settings, Quote, Bell, Menu, X, Plus,
-  Home, MoreHorizontal, LogOut, User, Camera
+  Home, MoreHorizontal, LogOut, User, Camera,
+  Globe, TrendingUp, Briefcase, Zap, Mail,
+  Box, Users2, Gauge, Puzzle, BookOpen
 } from "lucide-react";
 
 const sidebarLinks = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Users, label: "Customers", href: "/customers" },
-  { icon: FileText, label: "Invoices", href: "/invoices" },
-  { icon: Quote, label: "Quotes", href: "/quotes" },
-  { icon: Receipt, label: "Expenses", href: "/expenses" },
-  { icon: CreditCard, label: "Payments", href: "/payments" },
-  { icon: Package, label: "Products & Services", href: "/products" },
-  { icon: Calendar, label: "Calendar", href: "/calendar" },
-  { icon: BarChart3, label: "Reports", href: "/reports" },
-  { icon: Bot, label: "AI Assistant", href: "/ai-assistant" },
-  { icon: Settings, label: "Settings", href: "/settings" },
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard", feature: "dashboard" },
+  { icon: Users, label: "Customers", href: "/customers", feature: "crm" },
+  { icon: TrendingUp, label: "Leads", href: "/leads", feature: "crm" },
+  { icon: Briefcase, label: "Deals", href: "/deals", feature: "crm" },
+  { icon: FileText, label: "Invoices", href: "/invoices", feature: "invoicing" },
+  { icon: Quote, label: "Quotes", href: "/quotes", feature: "invoicing" },
+  { icon: Receipt, label: "Expenses", href: "/expenses", feature: "invoicing" },
+  { icon: CreditCard, label: "Payments", href: "/payments", feature: "invoicing" },
+  { icon: Package, label: "Products", href: "/products", feature: "dashboard" },
+  { icon: Globe, label: "Website", href: "/website", feature: "website" },
+  { icon: Calendar, label: "Appointments", href: "/appointments", feature: "appointments" },
+  { icon: Mail, label: "Marketing", href: "/marketing", feature: "marketing" },
+  { icon: Box, label: "Inventory", href: "/inventory", feature: "inventory" },
+  { icon: Users2, label: "Team", href: "/team", feature: "teamManagement" },
+  { icon: BarChart3, label: "Reports", href: "/reports", feature: "basicAnalytics" },
+  { icon: Zap, label: "Automation", href: "/automation", feature: "automation" },
+  { icon: Bot, label: "AI Assistant", href: "/ai-assistant", feature: "aiAssistant" },
+  { icon: Gauge, label: "Business Advisor", href: "/business-advisor", feature: "aiBusinessAdvisor" },
+  { icon: Settings, label: "Settings", href: "/settings", feature: "settings" },
 ];
 
 const bottomNavLinks = [
@@ -136,7 +146,7 @@ export default function AppLayout({ children, title, subtitle, action }: Props) 
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {sidebarLinks.map((link) => (
+        {sidebarLinks.map((link: any) => (
           <Link key={link.href} href={link.href} onClick={() => setSidebarOpen(false)}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${pathname === link.href ? "bg-primary text-white" : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
               }`}>

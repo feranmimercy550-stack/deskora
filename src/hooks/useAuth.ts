@@ -6,6 +6,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userPlan, setUserPlan] = useState<string>('free');
 
   useEffect(() => {
     // Get current session
@@ -14,6 +15,16 @@ export function useAuth() {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Fetch user's subscription plan
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('plan')
+            .eq('id', session.user.id)
+            .single();
+          if (profile?.plan) setUserPlan(profile.plan);
+        }
       } catch (error) {
         console.error('Error getting session:', error);
       } finally {
@@ -34,5 +45,5 @@ export function useAuth() {
     };
   }, []);
 
-  return { user, session, loading };
+  return { user, session, loading, userPlan };
 }
