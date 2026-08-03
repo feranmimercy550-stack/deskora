@@ -144,6 +144,19 @@ const featuresByPlan: Record<PlanType, FeatureGates> = {
 };
 
 export function getFeatureGates(plan: PlanType): FeatureGates {
+  // Check if test mode is enabled - only works on client side
+  if (typeof window !== 'undefined') {
+    try {
+      const testModeEnabled = localStorage.getItem('risely_test_mode_enabled') === 'true';
+      if (testModeEnabled) {
+        const testPlan = (localStorage.getItem('risely_test_plan') as PlanType) || 'enterprise';
+        return featuresByPlan[testPlan] || featuresByPlan.enterprise;
+      }
+    } catch (e) {
+      // localStorage not available, continue with normal plan
+    }
+  }
+  
   return featuresByPlan[plan] || featuresByPlan.free;
 }
 
